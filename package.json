@@ -1,0 +1,36 @@
+{
+  "name": "serebii-scraper",
+  "version": "1.0.0",
+  "description": "Serebii Pokedex Scraper",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc",
+    "start": "npm run build && cd example && node app.js ",
+    "debug": "npm run build && cd example && node --inspect-brk=9229 app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lynellf/serebii-scraper.git"
+  },
+  "keywords": [],
+  "author": "Ezell Frazier",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lynellf/serebii-scraper/issues"
+  },
+  "homepage": "https://github.com/lynellf/serebii-scraper#readme",
+  "devDependencies": {
+    "@types/isomorphic-fetch": "0.0.35",
+    "@types/jsdom": "^12.2.4",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.2.0",
+    "typescript": "^3.7.2"
+  },
+  "dependencies": {
+    "@types/jest": "^24.0.23",
+    "es6-promise": "^4.2.8",
+    "isomorphic-fetch": "^2.2.1",
+    "jsdom": "^15.2.1"
+  }
+}
