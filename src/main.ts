@@ -1,22 +1,26 @@
 import { getDocument } from "./utils/utils";
 
+function getTableRows(
+  rowArr: HTMLTableRowElement[],
+  row: Element,
+  index: number
+) {
+  const isTitle = index < 2;
+  const hasChildren = row.children.length > 2;
+  const isInvalid = !isTitle && !hasChildren;
+  return isInvalid ? rowArr : [...rowArr, row as HTMLTableRowElement];
+}
+
 function parseMovesTable(table: HTMLTableElement | undefined) {
   if (!table) {
     return;
   }
   const { children: rows } = table;
-  const output = Array.from(rows).reduce((rowArr, row, index) => {
-    const isTitle = index < 2;
-    if (!isTitle) {
-      const hasChildren = row.children.length > 2;
-      if (!hasChildren) {
-        return rowArr;
-      }
-      return [...rowArr, row as HTMLTableRowElement];
-    }
-    return rowArr;
-  }, [] as HTMLTableRowElement[]);
-  return getMoves(output);
+  const output = Array.from(rows).reduce(
+    getTableRows,
+    [] as HTMLTableRowElement[]
+  );
+  return output.map(parseMoveRow);
 }
 
 function parseStatsTable(table: HTMLTableElement | undefined) {
@@ -60,98 +64,130 @@ function getTableByHeader({
 }) {
   const targets = Array.from(document.querySelectorAll(tagName));
   const targetHeader = targets.find(target => target.textContent === query);
-  const errorMsg = new Error(`${query} Table Not Found!`);
-  if (!targetHeader) {
-    // console.info(errorMsg);
-    return;
-  }
-  const headingParentN0 = targetHeader.parentNode;
-  if (!headingParentN0) {
-    // console.info(errorMsg);
-    return;
-  }
-  const headingParentN1 = headingParentN0.parentNode;
-  if (!headingParentN1) {
-    // console.info(errorMsg);
-    return;
-  }
-  const table = headingParentN1.parentNode as HTMLTableElement;
-  if (!table) {
-    // console.info(errorMsg);
-    return;
-  }
-  return table;
+  return targetHeader?.parentNode?.parentNode?.parentNode as HTMLTableElement;
 }
 
-function getMoves(rows: HTMLTableRowElement[]) {
-  const moveList = rows.map(row => {
-    const { children } = row;
-    const isMaxMoves = row!.parentNode!.parentNode!.textContent?.includes(
-      "Max Moves"
-    );
-    const isMoveTutorMoves = row!.parentNode!.parentNode!.textContent?.includes(
-      "Move Tutor"
-    );
-    const isEggMoves = row!.parentNode!.parentNode!.textContent?.includes(
-      "Egg Moves"
-    );
-    const isAltTable = isMaxMoves || isMoveTutorMoves || isEggMoves;
+function parseMoveRow(row: HTMLTableRowElement) {
+  const { children } = row;
+  const isMaxMoves = row!.parentNode!.parentNode!.textContent?.includes(
+    "Max Moves"
+  );
+  const isMoveTutorMoves = row!.parentNode!.parentNode!.textContent?.includes(
+    "Move Tutor"
+  );
+  const isEggMoves = row!.parentNode!.parentNode!.textContent?.includes(
+    "Egg Moves"
+  );
+  const isAltTable = isMaxMoves || isMoveTutorMoves || isEggMoves;
+  return isAltTable
+    ? formatMoves("alternative", children)
+    : formatMoves("normal", children);
+}
 
-    if (!isAltTable) {
-      const moveName = children[1].textContent;
-      const moveTypeImg = children[2].children[0];
-      const moveCatImg = children[3].children[0];
-      const movePower = children[4].textContent;
-      const moveAccuracy = children[5].textContent;
-      const movePowerPoints = children[6].textContent;
-      const moveEffectPct = children[7].textContent;
-      const moveType = moveTypeImg
-        ?.getAttribute("alt")
-        ?.trim()
-        ?.split("-")[1];
-      const moveCategory = moveCatImg
-        ?.getAttribute("alt")
-        ?.trim()
-        ?.split(":")[1];
-
-      return {
-        moveName,
-        moveType,
-        moveCategory,
-        movePower,
-        moveAccuracy,
-        movePowerPoints,
-        moveEffectPct
-      };
+function formatMoves(type: "normal" | "alternative", children: HTMLCollection) {
+  const indexes = {
+    normal: {
+      moveName: 1,
+      moveTypeImg: [2, 0],
+      moveCatImg: [3, 0],
+      movePower: 5,
+      moveAccuracy: 5,
+      movePowerPoints: 6,
+      moveEffectPct: 7
+    },
+    alternative: {
+      moveName: 0,
+      moveTypeImg: [1, 0],
+      moveCatImg: [2, 0],
+      movePower: 3,
+      moveAccuracy: 4,
+      movePowerPoints: 5,
+      moveEffectPct: 6
     }
+  };
+  const nameIndex = indexes[type]["moveName"];
+  const typeImgParentIndex = indexes[type]["moveTypeImg"][0];
+  const typeImgIndex = indexes[type]["moveTypeImg"][1];
+  const catImgParentIndex = indexes[type]["moveCatImg"][0];
+  const catImgIndex = indexes[type]["moveCatImg"][1];
+  const movePwrIndex = indexes[type]["movePower"];
+  const moveAccIndex = indexes[type]["moveAccuracy"];
+  const movePwrPtsIndex = indexes[type]["movePowerPoints"];
+  const moveEffIndex = indexes[type]["moveEffectPct"];
 
-    const moveName = children[0].textContent;
-    const moveTypeImg = children[1].children[0];
-    const moveCatImg = children[2].children[0];
-    const movePower = children[3].textContent;
-    const moveAccuracy = children[4].textContent;
-    const movePowerPoints = children[5].textContent;
-    const moveEffectPct = children[6].textContent;
+  const moveName = children[nameIndex].textContent;
+  const moveTypeImg = children[typeImgParentIndex].children[typeImgIndex];
+  const moveCatImg = children[catImgParentIndex].children[catImgIndex];
+  const movePower = children[movePwrIndex].textContent;
+  const moveAccuracy = children[moveAccIndex].textContent;
+  const movePowerPoints = children[movePwrPtsIndex].textContent;
+  const moveEffectPct = children[moveEffIndex].textContent;
+  const moveType = moveTypeImg
+    ?.getAttribute("alt")
+    ?.trim()
+    ?.split("-")[1];
+  const moveCategory = moveCatImg
+    ?.getAttribute("alt")
+    ?.trim()
+    ?.split(":")[1];
+  return {
+    moveName,
+    moveType,
+    moveCategory,
+    movePower,
+    moveAccuracy,
+    movePowerPoints,
+    moveEffectPct
+  };
+}
 
-    const moveType = moveTypeImg
-      ?.getAttribute("alt")
-      ?.trim()
-      ?.split("-")[1];
-    const moveCategory = moveCatImg
-      ?.getAttribute("alt")
-      ?.trim()
-      ?.split(":")[1];
-    return {
-      moveName,
-      moveType,
-      moveCategory,
-      movePower,
-      moveAccuracy,
-      movePowerPoints,
-      moveEffectPct
-    };
+function formatStats({
+  contentArea,
+  eggMoves,
+  maxMoves,
+  standardMoves,
+  stats,
+  tmMoves,
+  trMoves,
+  tutorMoves,
+  version
+}: {
+  contentArea: Element;
+  eggMoves: HTMLTableElement | undefined;
+  maxMoves: HTMLTableElement | undefined;
+  standardMoves: HTMLTableElement | undefined;
+  stats: HTMLTableElement | undefined;
+  tmMoves: HTMLTableElement | undefined;
+  trMoves: HTMLTableElement | undefined;
+  tutorMoves: HTMLTableElement | undefined;
+  version: "1" | "2";
+}) {
+  const indexes = {
+    "1": [3, 4, 5],
+    "2": [2, 3, 4]
+  };
+
+  const {
+    children: {
+      [indexes[version][0]]: imageSection,
+      [indexes[version][1]]: generalInfo,
+      [indexes[version][2]]: abilitiesSection
+    }
+  } = contentArea;
+
+  return parseStats({
+    abilitiesSection,
+    eggMoves,
+    generalInfo,
+    imageSection,
+    maxMoves,
+    standardMoves,
+    stats,
+    tmMoves,
+    trMoves,
+    tutorMoves,
+    version
   });
-  return moveList;
 }
 
 function parseStats({
@@ -244,11 +280,11 @@ function parseStats({
   const tutorMovesList = parseMovesTable(tutorMoves);
   const maxMovesList = parseMovesTable(maxMoves);
   const moves = standardMoveList
-    ?.concat(tmMovesList ? tmMovesList : [])
-    ?.concat(trMovesList ? trMovesList : [])
-    ?.concat(eggMovesList ? eggMovesList : [])
-    ?.concat(tutorMovesList ? tutorMovesList : [])
-    ?.concat(maxMovesList ? maxMovesList : []);
+    ?.concat(tmMovesList ?? [])
+    ?.concat(trMovesList ?? [])
+    ?.concat(eggMovesList ?? [])
+    ?.concat(tutorMovesList ?? [])
+    ?.concat(maxMovesList ?? []);
   const baseStats = parseStatsTable(stats);
 
   return {
@@ -263,12 +299,9 @@ function parseStats({
 }
 
 function getStats(document: Document) {
-  const main = document.querySelector("main");
+  const main = document.querySelector("main")!;
   const title = document.title;
   console.info(`Now Scraping: ${title}`);
-  if (!main) {
-    throw new Error("Page Not Found");
-  }
   const {
     children: { 1: contentArea }
   } = main;
@@ -307,48 +340,47 @@ function getStats(document: Document) {
   const stats = getTableByHeader({ document, tagName: "h2", query: "Stats" });
   const isVer1 = children[3].textContent?.includes("Picture");
   const isVer2 = children[2].textContent?.includes("Picture");
-  if (!isVer1 && !isVer2) {
-    throw new Error("Pokemon Data Not Found!");
-  }
+  const version = isVer1 ? "1" : isVer2 ? "2" : "1";
 
-  if (isVer1) {
-    const {
-      children: { 3: imageSection, 4: generalInfo, 5: abilitiesSection }
-    } = contentArea;
-    return parseStats({
-      abilitiesSection,
-      generalInfo,
-      imageSection,
-      standardMoves,
-      stats,
-      tmMoves,
-      trMoves,
-      eggMoves,
-      tutorMoves,
-      maxMoves,
-      version: "1"
-    });
-  }
+  return formatStats({
+    contentArea,
+    standardMoves,
+    stats,
+    tmMoves,
+    trMoves,
+    eggMoves,
+    tutorMoves,
+    maxMoves,
+    version
+  });
+}
 
-  if (isVer2) {
-    const {
-      children: { 2: imageSection, 3: generalInfo, 4: abilitiesSection }
-    } = contentArea;
-
-    return parseStats({
-      abilitiesSection,
-      generalInfo,
-      imageSection,
-      standardMoves,
-      stats,
-      tmMoves,
-      trMoves,
-      eggMoves,
-      tutorMoves,
-      maxMoves,
-      version: "2"
-    });
+function pushURL(option: HTMLOptionElement, output: string[]) {
+  const { value } = option;
+  const isEmpty = value === "#";
+  if (!isEmpty) {
+    output.push(value);
   }
+  return;
+}
+
+function parsePageURLS(cell: HTMLTableDataCellElement, output: string[]) {
+  const form = cell.children[0] as HTMLFormElement;
+  const dropdown = form.children[0] as HTMLSelectElement;
+  const options = Array.from(dropdown.children) as HTMLOptionElement[];
+  options.forEach(option => pushURL(option, output));
+  return;
+}
+
+function tableToURLS(tableSection: HTMLTableSectionElement, list: string[]) {
+  const tableRows = Array.from(tableSection.children) as HTMLTableRowElement[];
+  const urlList = tableRows.reduce((output, row) => {
+    const cells = Array.from(row.children) as HTMLTableDataCellElement[];
+    cells.forEach(cell => parsePageURLS(cell, output));
+    return output;
+  }, [] as string[]);
+
+  return [...list, ...urlList];
 }
 
 function getPokemonPageURLS(document: Document) {
@@ -362,28 +394,11 @@ function getPokemonPageURLS(document: Document) {
   const tableBodies = Array.from(
     dexTable.children
   ) as HTMLTableSectionElement[];
-  let urls: string[] = [];
 
-  tableBodies.forEach(tableBody => {
-    const tableRows = Array.from(tableBody.children) as HTMLTableRowElement[];
-    const urlList = tableRows.reduce((output, row) => {
-      const cells = Array.from(row.children) as HTMLTableDataCellElement[];
-      cells.forEach(cell => {
-        const form = cell.children[0] as HTMLFormElement;
-        const dropdown = form.children[0] as HTMLSelectElement;
-        const options = Array.from(dropdown.children) as HTMLOptionElement[];
-        options.forEach(option => {
-          const { value } = option;
-          const isEmpty = value === "#";
-          if (!isEmpty) {
-            output.push(value);
-          }
-        });
-      });
-      return output;
-    }, [] as string[]);
-    urls = [...urls, ...urlList];
-  });
+  const urls = tableBodies.reduce(
+    (output, tableBody) => tableToURLS(tableBody, output),
+    [] as string[]
+  );
 
   return urls;
 }

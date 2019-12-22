@@ -1,4 +1,4 @@
-export declare function App(): Promise<({
+export declare function App(): Promise<{
     abilities: string[] | undefined;
     baseStats: {
         baseHP: string | null;
@@ -21,5 +21,5 @@ export declare function App(): Promise<({
     }[] | undefined;
     name: string | null;
     types: string[];
-} | undefined)[] | undefined>;
+}[] | undefined>;
 //# sourceMappingURL=main.d.ts.map
