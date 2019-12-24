@@ -1,20 +1,10 @@
-import { getDocument } from "./utils/utils";
+import { getDocument, duffsScraper } from "./utils/utils";
 
-function getTableRows(
-  rowArr: HTMLTableRowElement[],
-  row: Element,
-  index: number
-) {
-  const isTitle = index < 2;
-  const hasChildren = row.children.length > 2;
-  const isInvalid = !isTitle && !hasChildren;
-  return isInvalid ? rowArr : [...rowArr, row as HTMLTableRowElement];
+function returnVoid() {
+  return undefined;
 }
 
-function parseMovesTable(table: HTMLTableElement | undefined) {
-  if (!table) {
-    return;
-  }
+function parseMovesTable(table: HTMLTableElement) {
   const { children: rows } = table;
   const output = Array.from(rows).reduce(
     getTableRows,
@@ -23,11 +13,7 @@ function parseMovesTable(table: HTMLTableElement | undefined) {
   return output.map(parseMoveRow);
 }
 
-function parseStatsTable(table: HTMLTableElement | undefined) {
-  if (!table) {
-    return;
-  }
-
+function parseStatsTable(table: HTMLTableElement) {
   const {
     children: {
       2: {
@@ -51,6 +37,32 @@ function parseStatsTable(table: HTMLTableElement | undefined) {
     baseSpd,
     baseSpeed
   };
+}
+
+function getTableRows(
+  rowArr: HTMLTableRowElement[],
+  row: Element,
+  index: number
+) {
+  const isTitle = index < 2;
+  if (!isTitle) {
+    const hasChildren = row.children.length > 2;
+    if (!hasChildren) {
+      return rowArr;
+    }
+    return [...rowArr, row as HTMLTableRowElement];
+  }
+  return rowArr;
+}
+
+function getMovesTable(table: HTMLTableElement | undefined) {
+  const hasTable = table ? 1 : 0;
+  return [returnVoid, parseMovesTable][hasTable](table!);
+}
+
+function getStatsTable(table: HTMLTableElement | undefined) {
+  const hasTable = table ? 0 : 1;
+  return [returnVoid, parseStatsTable][hasTable](table!);
 }
 
 function getTableByHeader({
@@ -273,19 +285,19 @@ function parseStats({
   const trimmedAbilities = rawAbilities?.trim();
   const parsedAbilities = trimmedAbilities?.substring(11);
   const abilities = parsedAbilities?.split("-");
-  const standardMoveList = parseMovesTable(standardMoves);
-  const tmMovesList = parseMovesTable(tmMoves);
-  const trMovesList = parseMovesTable(trMoves);
-  const eggMovesList = parseMovesTable(eggMoves);
-  const tutorMovesList = parseMovesTable(tutorMoves);
-  const maxMovesList = parseMovesTable(maxMoves);
+  const standardMoveList = getMovesTable(standardMoves);
+  const tmMovesList = getMovesTable(tmMoves);
+  const trMovesList = getMovesTable(trMoves);
+  const eggMovesList = getMovesTable(eggMoves);
+  const tutorMovesList = getMovesTable(tutorMoves);
+  const maxMovesList = getMovesTable(maxMoves);
   const moves = standardMoveList
     ?.concat(tmMovesList ?? [])
     ?.concat(trMovesList ?? [])
     ?.concat(eggMovesList ?? [])
     ?.concat(tutorMovesList ?? [])
     ?.concat(maxMovesList ?? []);
-  const baseStats = parseStatsTable(stats);
+  const baseStats = getStatsTable(stats);
 
   return {
     abilities,
@@ -410,12 +422,12 @@ export async function App() {
     const indexPage = await getDocument(index);
     const urls = getPokemonPageURLS(indexPage);
     const pokedex = [] as ReturnType<typeof getStats>[];
-    for (let index = 0; index < urls.length; index++) {
-      const url = urls[index];
+    async function scrapeDocument(url: string) {
       const page = await getDocument(`${baseURL}${url}`);
       const entry = getStats(page);
       pokedex.push(entry);
     }
+    await duffsScraper(urls, scrapeDocument);
     return pokedex;
   } catch (error) {
     console.trace(error);
