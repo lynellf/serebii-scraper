@@ -18,3 +18,33 @@ export async function getDocument(url: string) {
   return document;
 }
 
+export async function duffsScraper(
+  arr: string[],
+  cb: (item: string) => Promise<void>
+) {
+  let iterations = Math.floor(arr.length / 8);
+  let startAt = arr.length % 8;
+  let i = 0;
+
+  do {
+    switch (startAt) {
+      case 0:
+        await cb(arr[i++]);
+      case 7:
+        await cb(arr[i++]);
+      case 6:
+        await cb(arr[i++]);
+      case 5:
+        await cb(arr[i++]);
+      case 4:
+        await cb(arr[i++]);
+      case 3:
+        await cb(arr[i++]);
+      case 2:
+        await cb(arr[i++]);
+      case 1:
+        await cb(arr[i++]);
+    }
+    startAt = 0;
+  } while (--iterations);
+}
