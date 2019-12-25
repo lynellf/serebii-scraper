@@ -48,3 +48,15 @@ export async function duffsScraper(
     startAt = 0;
   } while (--iterations);
 }
+
+const first: <T>(xs: T[]) => T = xs => xs[0];
+const rest: <T>(xs: T[]) => T[] = xs => xs.slice(1);
+
+export function getChildNode(element: Element, path: number[]) {
+  const children = Array.from(element.children);
+  const hasParams = children.length > 0 && path.length > 0;
+  const output: Element = hasParams
+    ? getChildNode(children[first(path)], rest(path))
+    : element;
+  return output;
+}

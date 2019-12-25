@@ -1,4 +1,4 @@
-import { getDocument, duffsScraper } from "./utils/utils";
+import { getDocument, duffsScraper, getChildNode } from "./utils/utils";
 
 function returnVoid() {
   return undefined;
@@ -55,12 +55,12 @@ function getTableRows(
   return rowArr;
 }
 
-function getMovesTable(table: HTMLTableElement | undefined) {
+function getMovesTable(table: HTMLTableElement | undefined | null) {
   const hasTable = table ? 1 : 0;
   return [returnVoid, parseMovesTable][hasTable](table!);
 }
 
-function getStatsTable(table: HTMLTableElement | undefined) {
+function getStatsTable(table: HTMLTableElement | undefined | null) {
   const hasTable = table ? 0 : 1;
   return [returnVoid, parseStatsTable][hasTable](table!);
 }
@@ -76,7 +76,10 @@ function getTableByHeader({
 }) {
   const targets = Array.from(document.querySelectorAll(tagName));
   const targetHeader = targets.find(target => target.textContent === query);
-  return targetHeader?.parentNode?.parentNode?.parentNode as HTMLTableElement;
+  return targetHeader?.parentNode?.parentNode?.parentNode as
+    | HTMLTableElement
+    | null
+    | undefined;
 }
 
 function parseMoveRow(row: HTMLTableRowElement) {
@@ -95,6 +98,14 @@ function parseMoveRow(row: HTMLTableRowElement) {
     ? formatMoves("alternative", children)
     : formatMoves("normal", children);
 }
+function formatMoveForms(element: HTMLCollection) {
+  return Array.from(element).map(cell => cell.children[0].getAttribute("alt"));
+}
+
+function parseMoveForms(element: HTMLCollection | undefined) {
+  const hasElement = element !== undefined ? 1 : 0;
+  return [() => undefined, () => formatMoveForms(element!)][hasElement]();
+}
 
 function formatMoves(type: "normal" | "alternative", children: HTMLCollection) {
   const indexes = {
@@ -105,7 +116,8 @@ function formatMoves(type: "normal" | "alternative", children: HTMLCollection) {
       movePower: 5,
       moveAccuracy: 5,
       movePowerPoints: 6,
-      moveEffectPct: 7
+      moveEffectPct: 7,
+      forms: 8
     },
     alternative: {
       moveName: 0,
@@ -114,7 +126,8 @@ function formatMoves(type: "normal" | "alternative", children: HTMLCollection) {
       movePower: 3,
       moveAccuracy: 4,
       movePowerPoints: 5,
-      moveEffectPct: 6
+      moveEffectPct: 6,
+      forms: 7
     }
   };
   const nameIndex = indexes[type]["moveName"];
@@ -126,6 +139,7 @@ function formatMoves(type: "normal" | "alternative", children: HTMLCollection) {
   const moveAccIndex = indexes[type]["moveAccuracy"];
   const movePwrPtsIndex = indexes[type]["movePowerPoints"];
   const moveEffIndex = indexes[type]["moveEffectPct"];
+  const moveFormsIndex = indexes[type]["forms"];
 
   const moveName = children[nameIndex].textContent;
   const moveTypeImg = children[typeImgParentIndex].children[typeImgIndex];
@@ -142,14 +156,19 @@ function formatMoves(type: "normal" | "alternative", children: HTMLCollection) {
     ?.getAttribute("alt")
     ?.trim()
     ?.split(":")[1];
+  const moveFormCells =
+    children[moveFormsIndex]?.children[0]?.children[0]?.children[0]?.children;
+  const moveForms = parseMoveForms(moveFormCells);
+
   return {
-    moveName,
-    moveType,
-    moveCategory,
-    movePower,
     moveAccuracy,
+    moveCategory,
+    moveEffectPct,
+    moveForms,
+    moveName,
+    movePower,
     movePowerPoints,
-    moveEffectPct
+    moveType
   };
 }
 
@@ -162,16 +181,18 @@ function formatStats({
   tmMoves,
   trMoves,
   tutorMoves,
+  alolaMoves,
   version
 }: {
   contentArea: Element;
-  eggMoves: HTMLTableElement | undefined;
-  maxMoves: HTMLTableElement | undefined;
-  standardMoves: HTMLTableElement | undefined;
-  stats: HTMLTableElement | undefined;
-  tmMoves: HTMLTableElement | undefined;
-  trMoves: HTMLTableElement | undefined;
-  tutorMoves: HTMLTableElement | undefined;
+  eggMoves: HTMLTableElement | undefined | null;
+  maxMoves: HTMLTableElement | undefined | null;
+  standardMoves: HTMLTableElement | undefined | null;
+  stats: HTMLTableElement | undefined | null;
+  tmMoves: HTMLTableElement | undefined | null;
+  trMoves: HTMLTableElement | undefined | null;
+  tutorMoves: HTMLTableElement | undefined | null;
+  alolaMoves: HTMLTableElement | undefined | null;
   version: "1" | "2";
 }) {
   const indexes = {
@@ -189,6 +210,7 @@ function formatStats({
 
   return parseStats({
     abilitiesSection,
+    alolaMoves,
     eggMoves,
     generalInfo,
     imageSection,
@@ -202,6 +224,14 @@ function formatStats({
   });
 }
 
+function parseTypes(element: Element){
+  const {
+    children: { 0: img }
+  } = element;
+  const { alt } = img as HTMLImageElement;
+  return alt;
+}
+
 function parseStats({
   abilitiesSection,
   eggMoves,
@@ -213,68 +243,33 @@ function parseStats({
   tmMoves,
   trMoves,
   tutorMoves,
+  alolaMoves,
   version
 }: {
   abilitiesSection: Element;
-  eggMoves: HTMLTableElement | undefined;
+  eggMoves: HTMLTableElement | undefined | null;
   generalInfo: Element;
   imageSection: Element;
-  maxMoves: HTMLTableElement | undefined;
-  standardMoves: HTMLTableElement | undefined;
-  stats: HTMLTableElement | undefined;
-  tmMoves: HTMLTableElement | undefined;
-  trMoves: HTMLTableElement | undefined;
-  tutorMoves: HTMLTableElement | undefined;
+  maxMoves: HTMLTableElement | undefined | null;
+  standardMoves: HTMLTableElement | undefined | null;
+  stats: HTMLTableElement | undefined | null;
+  tmMoves: HTMLTableElement | undefined | null;
+  trMoves: HTMLTableElement | undefined | null;
+  tutorMoves: HTMLTableElement | undefined | null;
+  alolaMoves: HTMLTableElement | undefined | null;
   version: "1" | "2";
 }) {
-  const image =
-    version === "1"
-      ? imageSection.children[0].children[1].children[0].children[0].children[0]
-          .children[0].children[0].children[0]
-      : imageSection.children[0].children[1].children[0].children[0].children[0]
-          .children[0].children[0];
+
+  const image = {
+    1: () => getChildNode(imageSection, [0, 1, 0, 0, 0, 0, 0]),
+    2: () => getChildNode(imageSection, [0,1,0,0,0,0])
+  }[version]()
 
   const imageSrc = (image as HTMLImageElement).src;
-  const {
-    children: {
-      0: {
-        children: {
-          1: {
-            children: {
-              0: { textContent: name },
-              2: {
-                children: {
-                  0: {
-                    children: {
-                      0: {
-                        children: {
-                          0: {
-                            children: {
-                              1: { textContent: dexNumber }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              4: typeCell
-            }
-          }
-        }
-      }
-    }
-  } = generalInfo;
-  const {
-    children: {
-      0: {
-        children: {
-          0: { textContent: rawAbilities }
-        }
-      }
-    }
-  } = abilitiesSection;
+  const name = getChildNode(generalInfo, [0, 1, 0]).textContent
+  const dexNumber = getChildNode(generalInfo, [0, 1, 2, 0, 0, 0, 1]).textContent
+  const typeCell = getChildNode(generalInfo, [0, 1, 4])
+  const rawAbilities = getChildNode(abilitiesSection, [0, 0]).textContent
   const types = Array.from(typeCell.children).map(link => {
     const {
       children: { 0: img }
@@ -291,12 +286,14 @@ function parseStats({
   const eggMovesList = getMovesTable(eggMoves);
   const tutorMovesList = getMovesTable(tutorMoves);
   const maxMovesList = getMovesTable(maxMoves);
+  const alolaMovesList = getMovesTable(alolaMoves);
   const moves = standardMoveList
     ?.concat(tmMovesList ?? [])
     ?.concat(trMovesList ?? [])
     ?.concat(eggMovesList ?? [])
     ?.concat(tutorMovesList ?? [])
-    ?.concat(maxMovesList ?? []);
+    ?.concat(maxMovesList ?? [])
+    ?.concat(alolaMovesList ?? []);
   const baseStats = getStatsTable(stats);
 
   return {
@@ -349,20 +346,26 @@ function getStats(document: Document) {
     tagName: "h3",
     query: "Usable Max Moves"
   });
+  const alolaMoves = getTableByHeader({
+    document,
+    tagName: "h3",
+    query: "Alola Form Level Up"
+  });
   const stats = getTableByHeader({ document, tagName: "h2", query: "Stats" });
   const isVer1 = children[3].textContent?.includes("Picture");
   const isVer2 = children[2].textContent?.includes("Picture");
   const version = isVer1 ? "1" : isVer2 ? "2" : "1";
 
   return formatStats({
+    alolaMoves,
     contentArea,
+    eggMoves,
+    maxMoves,
     standardMoves,
     stats,
     tmMoves,
     trMoves,
-    eggMoves,
     tutorMoves,
-    maxMoves,
     version
   });
 }

@@ -11,13 +11,14 @@ export declare function App(): Promise<{
     dexNumber: string | null;
     imageSrc: string;
     moves: {
-        moveName: string | null;
-        moveType: string | undefined;
-        moveCategory: string | undefined;
-        movePower: string | null;
         moveAccuracy: string | null;
-        movePowerPoints: string | null;
+        moveCategory: string | undefined;
         moveEffectPct: string | null;
+        moveForms: (string | null)[] | undefined;
+        moveName: string | null;
+        movePower: string | null;
+        movePowerPoints: string | null;
+        moveType: string | undefined;
     }[] | undefined;
     name: string | null;
     types: string[];
