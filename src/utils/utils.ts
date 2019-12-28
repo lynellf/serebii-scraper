@@ -60,3 +60,12 @@ export function getChildNode(element: Element, path: number[]) {
     : element;
   return output;
 }
+
+export function returnVoid() {
+  return undefined;
+}
+
+type TReducer = <T, O>(arr: T[], cb: (obj: O) => O, output: O) => O;
+export const reducer: TReducer = (arr, cb, output) => {
+  return arr.length > 0 ? reducer(rest(arr), cb, cb(output)) : output;
+};
