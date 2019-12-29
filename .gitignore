@@ -1,5 +1,5 @@
 example/out
-lib/*
+lib/*/**
 
 # Logs
 logs
