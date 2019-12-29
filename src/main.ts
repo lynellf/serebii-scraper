@@ -1,371 +1,46 @@
-import { getDocument, duffsScraper } from "./utils/utils";
+import { getDocument } from "./utils/utils";
+import { scrapePokemon } from "./pokemon/Pokemon";
 
-function returnVoid() {
-  return undefined;
-}
+type TBST = {
+  baseHP: string;
+  baseAtk: string;
+  baseDef: string;
+  baseSpa: string;
+  baseSpd: string;
+  baseSpeed: string;
+};
 
-function parseMovesTable(table: HTMLTableElement) {
-  const { children: rows } = table;
-  const output = Array.from(rows).reduce(
-    getTableRows,
-    [] as HTMLTableRowElement[]
-  );
-  return output.map(parseMoveRow);
-}
+type TBaseStats = {
+  normal: TBST;
+  alolan: TBST | null;
+  galarian: TBST | null;
+};
 
-function parseStatsTable(table: HTMLTableElement) {
-  const {
-    children: {
-      2: {
-        children: {
-          1: { textContent: baseHP },
-          2: { textContent: baseAtk },
-          3: { textContent: baseDef },
-          4: { textContent: baseSpa },
-          5: { textContent: baseSpd },
-          6: { textContent: baseSpeed }
-        }
-      }
-    }
-  } = table;
+export type TMove = {
+  moveName: string;
+  moveAccuracy: string;
+  moveEffectPct: string;
+  movePower: string;
+  movePowerPoints: string;
+  moveType: string;
+};
 
-  return {
-    baseHP,
-    baseAtk,
-    baseDef,
-    baseSpa,
-    baseSpd,
-    baseSpeed
-  };
-}
+type TPokemon = {
+  abilities: string[];
+  baseStats: TBaseStats;
+  dexNumber: string;
+  forms: { form: string; types: string[] }[];
+  imageSrc: string;
+  moves: { [key: string]: string[] };
+  name: string;
+};
 
-function getTableRows(
-  rowArr: HTMLTableRowElement[],
-  row: Element,
-  index: number
-) {
-  const isTitle = index < 2;
-  if (!isTitle) {
-    const hasChildren = row.children.length > 2;
-    if (!hasChildren) {
-      return rowArr;
-    }
-    return [...rowArr, row as HTMLTableRowElement];
-  }
-  return rowArr;
-}
-
-function getMovesTable(table: HTMLTableElement | undefined) {
-  const hasTable = table ? 1 : 0;
-  return [returnVoid, parseMovesTable][hasTable](table!);
-}
-
-function getStatsTable(table: HTMLTableElement | undefined) {
-  const hasTable = table ? 0 : 1;
-  return [returnVoid, parseStatsTable][hasTable](table!);
-}
-
-function getTableByHeader({
-  document,
-  tagName,
-  query
-}: {
-  document: Document;
-  tagName: "h2" | "h3" | "td";
-  query: string;
-}) {
-  const targets = Array.from(document.querySelectorAll(tagName));
-  const targetHeader = targets.find(target => target.textContent === query);
-  return targetHeader?.parentNode?.parentNode?.parentNode as HTMLTableElement;
-}
-
-function parseMoveRow(row: HTMLTableRowElement) {
-  const { children } = row;
-  const isMaxMoves = row!.parentNode!.parentNode!.textContent?.includes(
-    "Max Moves"
-  );
-  const isMoveTutorMoves = row!.parentNode!.parentNode!.textContent?.includes(
-    "Move Tutor"
-  );
-  const isEggMoves = row!.parentNode!.parentNode!.textContent?.includes(
-    "Egg Moves"
-  );
-  const isAltTable = isMaxMoves || isMoveTutorMoves || isEggMoves;
-  return isAltTable
-    ? formatMoves("alternative", children)
-    : formatMoves("normal", children);
-}
-
-function formatMoves(type: "normal" | "alternative", children: HTMLCollection) {
-  const indexes = {
-    normal: {
-      moveName: 1,
-      moveTypeImg: [2, 0],
-      moveCatImg: [3, 0],
-      movePower: 5,
-      moveAccuracy: 5,
-      movePowerPoints: 6,
-      moveEffectPct: 7
-    },
-    alternative: {
-      moveName: 0,
-      moveTypeImg: [1, 0],
-      moveCatImg: [2, 0],
-      movePower: 3,
-      moveAccuracy: 4,
-      movePowerPoints: 5,
-      moveEffectPct: 6
-    }
-  };
-  const nameIndex = indexes[type]["moveName"];
-  const typeImgParentIndex = indexes[type]["moveTypeImg"][0];
-  const typeImgIndex = indexes[type]["moveTypeImg"][1];
-  const catImgParentIndex = indexes[type]["moveCatImg"][0];
-  const catImgIndex = indexes[type]["moveCatImg"][1];
-  const movePwrIndex = indexes[type]["movePower"];
-  const moveAccIndex = indexes[type]["moveAccuracy"];
-  const movePwrPtsIndex = indexes[type]["movePowerPoints"];
-  const moveEffIndex = indexes[type]["moveEffectPct"];
-
-  const moveName = children[nameIndex].textContent;
-  const moveTypeImg = children[typeImgParentIndex].children[typeImgIndex];
-  const moveCatImg = children[catImgParentIndex].children[catImgIndex];
-  const movePower = children[movePwrIndex].textContent;
-  const moveAccuracy = children[moveAccIndex].textContent;
-  const movePowerPoints = children[movePwrPtsIndex].textContent;
-  const moveEffectPct = children[moveEffIndex].textContent;
-  const moveType = moveTypeImg
-    ?.getAttribute("alt")
-    ?.trim()
-    ?.split("-")[1];
-  const moveCategory = moveCatImg
-    ?.getAttribute("alt")
-    ?.trim()
-    ?.split(":")[1];
-  return {
-    moveName,
-    moveType,
-    moveCategory,
-    movePower,
-    moveAccuracy,
-    movePowerPoints,
-    moveEffectPct
-  };
-}
-
-function formatStats({
-  contentArea,
-  eggMoves,
-  maxMoves,
-  standardMoves,
-  stats,
-  tmMoves,
-  trMoves,
-  tutorMoves,
-  version
-}: {
-  contentArea: Element;
-  eggMoves: HTMLTableElement | undefined;
-  maxMoves: HTMLTableElement | undefined;
-  standardMoves: HTMLTableElement | undefined;
-  stats: HTMLTableElement | undefined;
-  tmMoves: HTMLTableElement | undefined;
-  trMoves: HTMLTableElement | undefined;
-  tutorMoves: HTMLTableElement | undefined;
-  version: "1" | "2";
-}) {
-  const indexes = {
-    "1": [3, 4, 5],
-    "2": [2, 3, 4]
-  };
-
-  const {
-    children: {
-      [indexes[version][0]]: imageSection,
-      [indexes[version][1]]: generalInfo,
-      [indexes[version][2]]: abilitiesSection
-    }
-  } = contentArea;
-
-  return parseStats({
-    abilitiesSection,
-    eggMoves,
-    generalInfo,
-    imageSection,
-    maxMoves,
-    standardMoves,
-    stats,
-    tmMoves,
-    trMoves,
-    tutorMoves,
-    version
-  });
-}
-
-function parseStats({
-  abilitiesSection,
-  eggMoves,
-  generalInfo,
-  imageSection,
-  maxMoves,
-  standardMoves,
-  stats,
-  tmMoves,
-  trMoves,
-  tutorMoves,
-  version
-}: {
-  abilitiesSection: Element;
-  eggMoves: HTMLTableElement | undefined;
-  generalInfo: Element;
-  imageSection: Element;
-  maxMoves: HTMLTableElement | undefined;
-  standardMoves: HTMLTableElement | undefined;
-  stats: HTMLTableElement | undefined;
-  tmMoves: HTMLTableElement | undefined;
-  trMoves: HTMLTableElement | undefined;
-  tutorMoves: HTMLTableElement | undefined;
-  version: "1" | "2";
-}) {
-  const image =
-    version === "1"
-      ? imageSection.children[0].children[1].children[0].children[0].children[0]
-          .children[0].children[0].children[0]
-      : imageSection.children[0].children[1].children[0].children[0].children[0]
-          .children[0].children[0];
-
-  const imageSrc = (image as HTMLImageElement).src;
-  const {
-    children: {
-      0: {
-        children: {
-          1: {
-            children: {
-              0: { textContent: name },
-              2: {
-                children: {
-                  0: {
-                    children: {
-                      0: {
-                        children: {
-                          0: {
-                            children: {
-                              1: { textContent: dexNumber }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              4: typeCell
-            }
-          }
-        }
-      }
-    }
-  } = generalInfo;
-  const {
-    children: {
-      0: {
-        children: {
-          0: { textContent: rawAbilities }
-        }
-      }
-    }
-  } = abilitiesSection;
-  const types = Array.from(typeCell.children).map(link => {
-    const {
-      children: { 0: img }
-    } = link;
-    const { alt } = img as HTMLImageElement;
-    return alt;
-  });
-  const trimmedAbilities = rawAbilities?.trim();
-  const parsedAbilities = trimmedAbilities?.substring(11);
-  const abilities = parsedAbilities?.split("-");
-  const standardMoveList = getMovesTable(standardMoves);
-  const tmMovesList = getMovesTable(tmMoves);
-  const trMovesList = getMovesTable(trMoves);
-  const eggMovesList = getMovesTable(eggMoves);
-  const tutorMovesList = getMovesTable(tutorMoves);
-  const maxMovesList = getMovesTable(maxMoves);
-  const moves = standardMoveList
-    ?.concat(tmMovesList ?? [])
-    ?.concat(trMovesList ?? [])
-    ?.concat(eggMovesList ?? [])
-    ?.concat(tutorMovesList ?? [])
-    ?.concat(maxMovesList ?? []);
-  const baseStats = getStatsTable(stats);
-
-  return {
-    abilities,
-    baseStats,
-    dexNumber,
-    imageSrc,
-    moves,
-    name,
-    types
-  };
-}
-
-function getStats(document: Document) {
-  const main = document.querySelector("main")!;
-  const title = document.title;
-  console.info(`Now Scraping: ${title}`);
-  const {
-    children: { 1: contentArea }
-  } = main;
-  const { children } = contentArea;
-
-  const standardMoves = getTableByHeader({
-    document,
-    tagName: "h3",
-    query: "Standard Level Up"
-  });
-  const tmMoves = getTableByHeader({
-    document,
-    tagName: "h3",
-    query: "Technical Machine Attacks"
-  });
-  const trMoves = getTableByHeader({
-    document,
-    tagName: "h3",
-    query: "Technical Record Attacks"
-  });
-  const eggMoves = getTableByHeader({
-    document,
-    tagName: "h3",
-    query: "Egg Moves"
-  });
-  const tutorMoves = getTableByHeader({
-    document,
-    tagName: "td",
-    query: "Move Tutor Moves"
-  });
-  const maxMoves = getTableByHeader({
-    document,
-    tagName: "h3",
-    query: "Usable Max Moves"
-  });
-  const stats = getTableByHeader({ document, tagName: "h2", query: "Stats" });
-  const isVer1 = children[3].textContent?.includes("Picture");
-  const isVer2 = children[2].textContent?.includes("Picture");
-  const version = isVer1 ? "1" : isVer2 ? "2" : "1";
-
-  return formatStats({
-    contentArea,
-    standardMoves,
-    stats,
-    tmMoves,
-    trMoves,
-    eggMoves,
-    tutorMoves,
-    maxMoves,
-    version
-  });
-}
+export type TOutput = {
+  pokemon: { [key: string]: TPokemon };
+  moves: { [key: string]: TMove };
+  abilities: string[];
+  _tempMoves?: { [key: string]: string[] };
+};
 
 function pushURL(option: HTMLOptionElement, output: string[]) {
   const { value } = option;
@@ -421,13 +96,17 @@ export async function App() {
     const index = `${baseURL}/pokedex-swsh/eternatus/`;
     const indexPage = await getDocument(index);
     const urls = getPokemonPageURLS(indexPage);
-    const pokedex = [] as ReturnType<typeof getStats>[];
-    async function scrapeDocument(url: string) {
-      const page = await getDocument(`${baseURL}${url}`);
-      const entry = getStats(page);
-      pokedex.push(entry);
+    const len = urls.length;
+
+    let pokedex: TOutput = {
+      abilities: [],
+      moves: {},
+      pokemon: {}
+    };
+    for (let index = 0; index < len; index++) {
+      const page = await getDocument(`${baseURL}${urls[index]}`);
+      pokedex = scrapePokemon(page, pokedex);
     }
-    await duffsScraper(urls, scrapeDocument);
     return pokedex;
   } catch (error) {
     console.trace(error);
