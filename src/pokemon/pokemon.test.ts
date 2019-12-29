@@ -9,11 +9,16 @@ function fetchPokemon(htmlString: string) {
   const {
     window: { document }
   } = new JSDOM(htmlString);
-  const output = scrapePokemon(document as Document, {} as TOutput);
-  return output;
+  let pokedex: TOutput = {
+    abilities: [],
+    moves: {},
+    pokemon: {}
+  };
+  pokedex = scrapePokemon(document as Document, pokedex as TOutput);
+  return pokedex;
 }
 
-describe("data about a pokemon", () => {
+describe("the scraper doesn't blow up", () => {
   it("Returns Raichu", () => {
     const output = fetchPokemon(Raichu);
   });
