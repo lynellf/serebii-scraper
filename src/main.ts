@@ -107,6 +107,7 @@ export async function App() {
       const page = await getDocument(`${baseURL}${urls[index]}`);
       pokedex = scrapePokemon(page, pokedex);
     }
+    await duffsScraper(urls, scrapeDocument);
     return pokedex;
   } catch (error) {
     console.trace(error);
