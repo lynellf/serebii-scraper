@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "description": "Serebii Pokedex Scraper",
   "main": "index.js",
+  "typings": "./lib/main.d.ts",
+  "types": "./lib/main.d.ts",
   "scripts": {
     "test": "jest",
     "build": "tsc",
     "start": "npm run build && cd example && node app.js ",
-    "debug": "npm run build && cd example && node --inspect-brk=9229 app.js"
+    "debug": "npm run build && cd example && node --inspect-brk=9229 app.js",
+    "docts": "docts"
   },
   "repository": {
     "type": "git",
@@ -23,6 +26,7 @@
   "devDependencies": {
     "@types/isomorphic-fetch": "0.0.35",
     "@types/jsdom": "^12.2.4",
+    "docts": "^0.2.0",
     "jest": "^24.9.0",
     "ts-jest": "^24.2.0",
     "typescript": "^3.7.2"
