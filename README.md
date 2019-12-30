@@ -1,5 +1,13 @@
 # serebii-scraper
  Serebii Pokedex Scraper
+ 
+ What is This?
+ ===
+ I'm working on a Pokemon Team Builder App for Pokemon Sword and Shield.
+ 
+ Problem. There's no readily available source for Generation 8 Pokemon.
+ 
+ Solution? A web scraper. To Scrape one of the oldest Pokemon websites in existence (https://www.serebii.net/).
 
 API
 ===
